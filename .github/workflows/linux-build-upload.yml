@@ -1,0 +1,48 @@
+name: Build and Upload (MinGW)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build ${{ matrix.build_type }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - build_type: static
+            cmake_shared: OFF
+          - build_type: shared
+            cmake_shared: ON
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install MinGW-w64 and Ninja
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y mingw-w64 cmake ninja-build
+
+    - name: Configure CMake
+      run: |
+        cmake -S . -B build \
+          -G Ninja \
+          -DCMAKE_SYSTEM_NAME=Windows \
+          -DCMAKE_C_COMPILER=x86_64-w64-mingw32-gcc \
+          -DCMAKE_CXX_COMPILER=x86_64-w64-mingw32-g++ \
+          -DCMAKE_RC_COMPILER=x86_64-w64-mingw32-windres \
+          -DCMAKE_INSTALL_PREFIX=install \
+          -DBUILD_SHARED_LIBS=${{ matrix.cmake_shared }}
+
+    - name: Build
+      run: cmake --build build
+
+    - name: Install
+      run: cmake --install build --prefix install
+
+    - name: Upload Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: ogg-windows-x64-${{ matrix.build_type }}
+        path: install/
