@@ -1,0 +1,44 @@
+name: Build and Upload
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build ${{ matrix.name }}
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows x64 Static
+            link_type: static
+            shared_libs: OFF
+            triplet: x64-windows-static
+          - name: Windows x64 Dynamic
+            link_type: dynamic
+            shared_libs: ON
+            triplet: x64-windows
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure CMake
+        run: |
+          cmake -S . -B build -A x64 `
+            -DBUILD_SHARED_LIBS=${{ matrix.shared_libs }} `
+            -DCMAKE_BUILD_TYPE=Release `
+            -DCMAKE_INSTALL_PREFIX=install
+
+      - name: Build
+        run: cmake --build build --config Release --parallel
+
+      - name: Install
+        run: cmake --install build --config Release
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ogg-${{ matrix.triplet }}
+          path: install/
